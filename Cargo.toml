@@ -1,0 +1,11 @@
+[package]
+name = "game-of-life-ocl"
+version = "0.1.0"
+authors = ["Mr-Andersen <andrew-anderson.neo@yandex.ru>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# minifb = "0.15"
+ocl = "0.19"
