@@ -1,107 +1,67 @@
-use ocl::{Device, DeviceType, Platform, ProQue, Program};
+use std::iter::once;
 
-const TABLE_HEIGHT: usize = 5;
-const TABLE_WIDTH: usize = 5;
+use minifb::{Key, Window, WindowOptions};
 
-const CELL_WIDTH: usize = 32;
-const CELL_HEIGHT: usize = 32;
+mod consts;
+mod game;
+mod table;
 
-struct Table<'a> {
-    inner: [u8; (TABLE_HEIGHT * TABLE_WIDTH) as usize],
-    _mark: std::marker::PhantomData<&'a u8>,
-}
-
-struct TableIter<'a> {
-    table: &'a Table<'a>,
-    row: usize,
-}
-
-impl<'a> Table<'a> {
-    fn new(inner: [u8; TABLE_HEIGHT * TABLE_WIDTH]) -> Self {
-        Table {
-            inner,
-            _mark: std::marker::PhantomData,
-        }
-    }
-    fn iter(&'a self) -> TableIter<'a> {
-        TableIter {
-            table: self,
-            row: 0,
-        }
-    }
-}
-
-impl<'a> std::ops::Deref for Table<'a> {
-    type Target = [u8];
-
-    fn deref(&self) -> &[u8] {
-        &self.inner
-    }
-}
-
-impl<'a> std::ops::DerefMut for Table<'a> {
-    fn deref_mut(&mut self) -> &mut [u8] {
-        &mut self.inner
-    }
-}
-
-impl<'a> Iterator for TableIter<'a> {
-    type Item = &'a [u8];
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.row >= TABLE_HEIGHT {
-            return None;
-        }
-        self.row += 1;
-        Some(
-            &self.table.inner
-                [(self.row - 1) * TABLE_WIDTH..self.row * TABLE_WIDTH],
-        )
-    }
-}
+use consts::*;
+use game::*;
+use table::*;
 
 fn main() -> ocl::Result<()> {
-    let pro_que = ProQue::builder()
-        .device(
-            Device::list(Platform::default(), Some(DeviceType::new().gpu()))
-                .unwrap()
-                .get(0)
-                .unwrap(),
-        )
-        .prog_bldr({
-            let mut bldr = Program::builder();
-            bldr.src_file("src/kernel.cl")
-                .cmplr_def("WIDTH", TABLE_WIDTH as i32)
-                .cmplr_def("HEIGHT", TABLE_HEIGHT as i32);
-            bldr
-        })
-        .dims((TABLE_HEIGHT, TABLE_WIDTH))
-        .build()?;
-    let prev = Table::new([
-        0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
-        0,
-    ]);
-    let prev_buffer = pro_que
-        .buffer_builder()
-        .copy_host_slice(&prev)
-        .len(TABLE_HEIGHT * TABLE_WIDTH)
-        .build()?;
-    let next_buffer = pro_que
-        .buffer_builder::<u8>()
-        .len(TABLE_HEIGHT * TABLE_WIDTH)
-        .build()?;
-    let kernel = pro_que
-        .kernel_builder("next_iteration")
-        .arg(&prev_buffer)
-        .arg(&next_buffer)
-        .build()?;
-    unsafe {
-        kernel.enq()?;
+    print!("Creating game... ");
+    // let single: Vec<u32> = once(0x00ffffff).cycle().take(100).collect();
+    let single = once(0u32).cycle().take(360).chain(once(0x00ffffff));
+    let mut game = Game::new(
+        once(single).cycle().take(300)
+    )?;
+    /*let mut game = Game::new(&[
+        &[0, 0, 0, 0, 0],
+        &[0, 0, 0xffffffff, 0, 0],
+        &[0, 0, 0, 0xffffffff, 0],
+        &[0, 0xffffffff, 0xffffffff, 0xffffffff, 0],
+        &[0, 0, 0, 0, 0],
+    ])?;*/
+    println!("done.");
+
+    let mut buffer = Table::default();
+    print!("Reading initial value... ");
+    game.buffer().read(&mut *buffer as &mut [u32]).enq()?;
+    println!("done.");
+
+    print!("Creating window... ");
+    let mut window = Window::new(
+        "Test - ESC to exit",
+        WIN_WIDTH,
+        WIN_HEIGHT,
+        WindowOptions::default(),
+    )
+    .unwrap();
+    window
+        .update_with_buffer(&*buffer, WIN_WIDTH, WIN_HEIGHT)
+        .unwrap();
+    println!("done.");
+
+    // Limit to max ~60 fps update rate
+    window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
+
+    let mut pause = true;
+    while window.is_open() && !window.is_key_down(Key::Escape) {
+        if window.is_key_down(Key::Space) {
+            pause = !pause;
+        }
+        if !pause || window.is_key_down(Key::S) {
+            game.next()?.read(&mut *buffer as &mut [u32]).enq()?;
+            window
+                .update_with_buffer(&*buffer, WIN_WIDTH, WIN_HEIGHT)
+                .unwrap();
+        } else {
+            window.update();
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
     }
-    let mut next = Table::new([0u8; TABLE_WIDTH * TABLE_HEIGHT]);
-    next_buffer.read(&mut next as &mut [u8]).enq()?;
-    for row in next.iter() {
-        println!("{:?}", row);
-    }
+
     Ok(())
 }
