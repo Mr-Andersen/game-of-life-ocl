@@ -15,7 +15,9 @@ pub struct TableIter<'a> {
 }
 
 impl Table {
-    pub fn new(val: impl IntoIterator<Item=impl IntoIterator<Item=u32>>) -> Self {
+    pub fn new(
+        val: impl IntoIterator<Item = impl IntoIterator<Item = u32>>,
+    ) -> Self {
         let mut mat: TableMat = [[0u32; TABLE_WIDTH]; TABLE_HEIGHT];
         for (i, row) in val.into_iter().take(TABLE_HEIGHT).enumerate() {
             for (j, elem) in row.into_iter().take(TABLE_WIDTH).enumerate() {

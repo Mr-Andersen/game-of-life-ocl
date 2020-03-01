@@ -10,7 +10,9 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(init_table: impl IntoIterator<Item=impl IntoIterator<Item=u32>>) -> ocl::Result<Self> {
+    pub fn new(
+        init_table: impl IntoIterator<Item = impl IntoIterator<Item = u32>>,
+    ) -> ocl::Result<Self> {
         let pro_que = ProQue::builder()
             .device(
                 Device::list(

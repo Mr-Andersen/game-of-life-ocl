@@ -1,6 +1,6 @@
 use std::iter::once;
 
-use minifb::{Key, Window, WindowOptions};
+use minifb::{Key, KeyRepeat, Window, WindowOptions};
 
 mod consts;
 mod game;
@@ -12,18 +12,9 @@ use table::*;
 
 fn main() -> ocl::Result<()> {
     print!("Creating game... ");
-    // let single: Vec<u32> = once(0x00ffffff).cycle().take(100).collect();
-    let single = once(0u32).cycle().take(360).chain(once(0x00ffffff));
-    let mut game = Game::new(
-        once(single).cycle().take(300)
-    )?;
-    /*let mut game = Game::new(&[
-        &[0, 0, 0, 0, 0],
-        &[0, 0, 0xffffffff, 0, 0],
-        &[0, 0, 0, 0xffffffff, 0],
-        &[0, 0xffffffff, 0xffffffff, 0xffffffff, 0],
-        &[0, 0, 0, 0, 0],
-    ])?;*/
+    // In each row, place single alive cell in the middle
+    let single = once(DEAD).cycle().take(TABLE_WIDTH / 2).chain(once(ALIVE));
+    let mut game = Game::new(once(single).cycle().take(300))?;
     println!("done.");
 
     let mut buffer = Table::default();
@@ -33,34 +24,35 @@ fn main() -> ocl::Result<()> {
 
     print!("Creating window... ");
     let mut window = Window::new(
-        "Test - ESC to exit",
-        WIN_WIDTH,
-        WIN_HEIGHT,
+        "Game of Life (Esc to exit, Space to toggle pause)",
+        TABLE_WIDTH,
+        TABLE_HEIGHT,
         WindowOptions::default(),
     )
     .unwrap();
     window
-        .update_with_buffer(&*buffer, WIN_WIDTH, WIN_HEIGHT)
+        .update_with_buffer(&*buffer, TABLE_WIDTH, TABLE_HEIGHT)
         .unwrap();
     println!("done.");
 
-    // Limit to max ~60 fps update rate
-    window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
+    // Limit to max ~15 fps update rate
+    window.limit_update_rate(Some(std::time::Duration::from_micros(67000)));
 
     let mut pause = true;
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        if window.is_key_down(Key::Space) {
+        // Press Space to toggle pause
+        if window.is_key_pressed(Key::Space, KeyRepeat::No) {
             pause = !pause;
         }
+        // Hold 'S' to step forward
         if !pause || window.is_key_down(Key::S) {
             game.next()?.read(&mut *buffer as &mut [u32]).enq()?;
             window
-                .update_with_buffer(&*buffer, WIN_WIDTH, WIN_HEIGHT)
+                .update_with_buffer(&*buffer, TABLE_WIDTH, TABLE_HEIGHT)
                 .unwrap();
         } else {
             window.update();
         }
-        std::thread::sleep(std::time::Duration::from_millis(100));
     }
 
     Ok(())
