@@ -70,7 +70,7 @@ impl Game {
         Ok(&self.buffers[nxt_idx as usize])
     }
 
-    pub fn buffer<'a>(&'a self) -> &'a Buffer<u32> {
-        &self.buffers[self.cur_buf as usize]
+    pub fn buffer<'a>(&'a mut self) -> &'a mut Buffer<u32> {
+        &mut self.buffers[self.cur_buf as usize & 1]
     }
 }

@@ -14,7 +14,9 @@ fn main() -> ocl::Result<()> {
     print!("Creating game... ");
     // In each row, place single alive cell in the middle
     let single = once(DEAD).cycle().take(TABLE_WIDTH / 2).chain(once(ALIVE));
-    let mut game = Game::new(once(single).cycle().take(300))?;
+    let init = once(single).cycle().take(300);
+    let mut game = Game::new(init.clone())?;
+    let init_table = Table::new(init);
     println!("done.");
 
     let mut buffer = Table::default();
@@ -44,7 +46,14 @@ fn main() -> ocl::Result<()> {
         if window.is_key_pressed(Key::Space, KeyRepeat::No) {
             pause = !pause;
         }
-        // Hold 'S' to step forward
+        // Press R to "restart" game
+        if window.is_key_pressed(Key::R, KeyRepeat::No) {
+            game.buffer().write(&*init_table as &[u32]).enq()?;
+            window
+                .update_with_buffer(&*init_table, TABLE_WIDTH, TABLE_HEIGHT)
+                .unwrap();
+        }
+        // Hold S to step forward
         if !pause || window.is_key_down(Key::S) {
             game.next()?.read(&mut *buffer as &mut [u32]).enq()?;
             window
