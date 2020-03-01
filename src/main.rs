@@ -53,8 +53,8 @@ fn main() -> ocl::Result<()> {
                 .update_with_buffer(&*init_table, TABLE_WIDTH, TABLE_HEIGHT)
                 .unwrap();
         }
-        // Hold S to step forward
-        if !pause || window.is_key_down(Key::S) {
+        // Press S to step forward
+        if !pause || window.is_key_pressed(Key::S, KeyRepeat::Yes) {
             game.next()?.read(&mut *buffer as &mut [u32]).enq()?;
             window
                 .update_with_buffer(&*buffer, TABLE_WIDTH, TABLE_HEIGHT)
