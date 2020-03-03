@@ -18,16 +18,13 @@ impl Table {
     pub fn new(
         val: impl IntoIterator<Item = impl IntoIterator<Item = u32>>,
     ) -> Self {
-        let mut mat: TableMat = [[0u32; TABLE_WIDTH]; TABLE_HEIGHT];
+        let mut inner: TableLin = [0u32; TABLE_WIDTH * TABLE_HEIGHT];
         for (i, row) in val.into_iter().take(TABLE_HEIGHT).enumerate() {
             for (j, elem) in row.into_iter().take(TABLE_WIDTH).enumerate() {
-                mat[i][j] = elem;
+                inner[i * TABLE_WIDTH + j] = elem;
             }
         }
-        let inner: &TableLin =
-            unsafe { (&mat as *const TableMat as *const TableLin).as_ref() }
-                .unwrap();
-        Table { inner: *inner }
+        Table { inner: inner }
     }
     pub fn iter<'a>(&'a self) -> TableIter<'a> {
         TableIter {

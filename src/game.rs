@@ -43,8 +43,8 @@ impl Game {
             .build()?;
         let kernel = pro_que
             .kernel_builder("next_iteration")
-            .arg_named("prev_buffer", None::<&Buffer<u32>>)
-            .arg_named("next_buffer", None::<&Buffer<u32>>)
+            .arg_named("prev_buffer", &prev_buffer)
+            .arg_named("next_buffer", &next_buffer)
             .build()?;
         Ok(Game {
             buffers: [prev_buffer, next_buffer],
@@ -70,7 +70,7 @@ impl Game {
         Ok(&self.buffers[nxt_idx as usize])
     }
 
-    pub fn buffer<'a>(&'a mut self) -> &'a mut Buffer<u32> {
+    pub fn buffer_mut<'a>(&'a mut self) -> &'a mut Buffer<u32> {
         &mut self.buffers[self.cur_buf as usize & 1]
     }
 }
